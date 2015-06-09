@@ -131,3 +131,5 @@ echo "output {" > /etc/logstash/conf.d/30-lumberjack-output.conf
 echo "  elasticsearch { host => localhost }" >> /etc/logstash/conf.d/30-lumberjack-output.conf
 echo "  stdout { codec => rubydebug }" >> /etc/logstash/conf.d/30-lumberjack-output.conf
 echo "}" >> /etc/logstash/conf.d/30-lumberjack-output.conf
+
+sudo service logstash restart
