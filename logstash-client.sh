@@ -1,6 +1,9 @@
 # Add the key for elastic search, it's part of the same group.
 rpm --import http://packages.elasticsearch.org/GPG-KEY-elasticsearch
 
+# Enable time server, or the times might not match.
+sudo yum install ntp
+
 # Create a config file.
 cat > /etc/yum.repos.d/logstash-forwarder.repo <<end_of_forwarder_config
 [logstash-forwarder]

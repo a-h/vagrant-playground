@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-set -x
-trap read debug
-
 # See instructions at https://www.digitalocean.com/community/tutorials/how-to-install-elasticsearch-logstash-and-kibana-4-on-centos-7
-# exit 0
+
+# Sync time properly.
+sudo yum install ntp
 
 ##################
 # Elastic Search #
@@ -25,15 +24,15 @@ rm /opt/jre-8*.tar.gz
 rpm --import http://packages.elasticsearch.org/GPG-KEY-elasticsearch
 
 # Configure yum to allow it
-echo "[elasticsearch-1.4]" > /etc/yum.repos.d/elasticsearch.repo
-echo "name=Elasticsearch repository for 1.4.x packages" >> /etc/yum.repos.d/elasticsearch.repo
-echo "baseurl=http://packages.elasticsearch.org/elasticsearch/1.4/centos" >> /etc/yum.repos.d/elasticsearch.repo
+echo "[elasticsearch-1.6]" > /etc/yum.repos.d/elasticsearch.repo
+echo "name=Elasticsearch repository for 1.6.x packages" >> /etc/yum.repos.d/elasticsearch.repo
+echo "baseurl=http://packages.elasticsearch.org/elasticsearch/1.6/centos" >> /etc/yum.repos.d/elasticsearch.repo
 echo "gpgcheck=1" >> /etc/yum.repos.d/elasticsearch.repo
 echo "gpgkey=http://packages.elasticsearch.org/GPG-KEY-elasticsearch" >> /etc/yum.repos.d/elasticsearch.repo
 echo "enabled=1" >> /etc/yum.repos.d/elasticsearch.repo
 
 # Do it
-yum -y install elasticsearch-1.4.4
+yum -y install elasticsearch
 
 # Consider modifying /etc/elasticsearch/elasticsearch.yml to remove access outside of localhost.
 
@@ -41,13 +40,14 @@ yum -y install elasticsearch-1.4.4
 systemctl start elasticsearch.service
 
 # Start it when the system starts.
+/bin/systemctl daemon-reload
 systemctl enable elasticsearch.service
 
 ##########
 # Kibana #
 ##########
 
-cd ~; wget https://download.elasticsearch.org/kibana/kibana/kibana-4.0.1-linux-x64.tar.gz
+cd ~; wget https://download.elastic.co/kibana/kibana/kibana-4.0.3-linux-x64.tar.gz
 tar xvf kibana-*.tar.gz
 
 # Consider limiting access to kibana by changing the host at ~/kibana-4*/config/kibana.yml
