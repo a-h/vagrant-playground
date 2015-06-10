@@ -102,6 +102,14 @@ sudo openssl req -config /etc/pki/tls/openssl.cnf -x509 -days 3650 -batch -nodes
 mkdir /etc/logstash/
 mkdir /etc/logstash/conf.d/
 
+mkdir /opt/logstash/patterns
+cat > /opt/logstash/patterns/nginx <<end_of_nginx_pattern
+NGUSERNAME [a-zA-Z\.\@\-\+_%]+
+NGUSER %{NGUSERNAME}
+NGINXACCESS %{IPORHOST:clientip} %{NGUSER:ident} %{NGUSER:auth} \[%{HTTPDATE:timestamp}\] "%{WORD:verb} %{URIPATHPARAM:request} HTTP/%{NUMBER:httpversion}" %{NUMBER:response} (?:%{NUMBER:bytes}|-) (?:"(?:%{URI:referrer}|-)"|%{QS:referrer}) %{QS:agent}
+end_of_nginx_pattern
+sudo chown logstash:logstash /opt/logstash/patterns/nginx
+
 echo "input {" > /etc/logstash/conf.d/01-lumberjack-input.conf
 echo "  lumberjack {" >> /etc/logstash/conf.d/01-lumberjack-input.conf
 echo "    port => 5000" >> /etc/logstash/conf.d/01-lumberjack-input.conf
@@ -112,19 +120,32 @@ echo "  }" >> /etc/logstash/conf.d/01-lumberjack-input.conf
 echo "}" >> /etc/logstash/conf.d/01-lumberjack-input.conf
 
 # Create filter for syslog messages
-echo "filter {" > /etc/logstash/conf.d/10-syslog.conf
-echo "  if [type] == \"syslog\" {" >> /etc/logstash/conf.d/10-syslog.conf
-echo "    grok {" >> /etc/logstash/conf.d/10-syslog.conf
-echo "      match => { \"message\" => \"%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}\" }" >> /etc/logstash/conf.d/10-syslog.conf
-echo "      add_field => [ \"received_at\", \"%{@timestamp}\" ]" >> /etc/logstash/conf.d/10-syslog.conf
-echo "      add_field => [ \"received_from\", \"%{host}\" ]" >> /etc/logstash/conf.d/10-syslog.conf
-echo "    }" >> /etc/logstash/conf.d/10-syslog.conf
-echo "    syslog_pri { }" >> /etc/logstash/conf.d/10-syslog.conf
-echo "    date {" >> /etc/logstash/conf.d/10-syslog.conf
-echo "      match => [ \"syslog_timestamp\", \"MMM  d HH:mm:ss\", \"MMM dd HH:mm:ss\" ]" >> /etc/logstash/conf.d/10-syslog.conf
-echo "    }" >> /etc/logstash/conf.d/10-syslog.conf
-echo "  }" >> /etc/logstash/conf.d/10-syslog.conf
-echo "}" >> /etc/logstash/conf.d/10-syslog.conf
+cat > /etc/logstash/conf.d/10-syslog.conf <<syslog_filter
+filter {
+  if [type] == "syslog" {
+    grok {
+      match => { "message" => "%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_program}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}" }
+      add_field => [ "received_at", "%{@timestamp}" ]
+      add_field => [ "received_from", "%{host}" ]
+    }
+    syslog_pri { }
+    date {
+      match => [ "syslog_timestamp", "MMM  d HH:mm:ss", "MMM dd HH:mm:ss" ]
+    }
+  }
+}
+syslog_filter
+
+# Create filter for nginx messages.
+cat > /etc/logstash/conf.d/11-nginx.conf <<end_of_logstash_nginx_configuration
+filter {
+  if [type] == "nginx-access" {
+    grok {
+      match => { "message" => "%{NGINXACCESS}" }
+    }
+  }
+}
+end_of_logstash_nginx_configuration
 
 # Setup elastic search location
 echo "output {" > /etc/logstash/conf.d/30-lumberjack-output.conf
