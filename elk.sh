@@ -147,6 +147,21 @@ filter {
 }
 end_of_logstash_nginx_configuration
 
+# Create filter for weblogic messages.
+cat > /etc/logstash/conf.d/12-weblogic.conf <<end_of_weblogic_configuration
+filter {
+  ## WebLogic Server Http Access Log
+  if [type] == "weblogic-access" {
+    grok {
+      match => [ "message", "%{IP:client} - - \[(?<timestamp>%{MONTHDAY}[./-]%{MONTH}[./-]%{YEAR}:%{TIME}\s+%{ISO8601_TIMEZONE})] \"%{WORD:verb} %{URIPATHPARAM:uri}\s+HTTP.+?\" %{NUMBER:status} %{NUMBER:response_time}" ]
+    }
+    date {
+      match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
+    }
+  }
+}
+end_of_weblogic_configuration
+
 # Setup elastic search location
 echo "output {" > /etc/logstash/conf.d/30-lumberjack-output.conf
 echo "  elasticsearch { host => localhost }" >> /etc/logstash/conf.d/30-lumberjack-output.conf
